@@ -1,0 +1,66 @@
+from typing import List
+
+
+class Solution:
+    def getUnfulfilledCustomers(
+        self,
+        requests: List[List[int]],
+        totalInventory: int
+    ) -> List[int]:
+
+        # Fields: customerId, quantity, bidAmount, timestamp
+        ordered = sorted(
+            requests,
+            key=lambda request: (-request[2], request[3])
+        )
+
+        received = set()
+        i = 0
+        n = len(ordered)
+
+        while i < n and totalInventory > 0:
+            bid = ordered[i][2]
+            j = i
+
+            # Find all customers with the same bid.
+            while j < n and ordered[j][2] == bid:
+                j += 1
+
+            group = ordered[i:j]
+            group_demand = sum(request[1] for request in group)
+
+            if totalInventory >= group_demand:
+                # This entire bid group is fulfilled.
+                for customer_id, quantity, _, _ in group:
+                    if quantity > 0:
+                        received.add(customer_id)
+
+                totalInventory -= group_demand
+            else:
+                # The inventory ends inside this bid group.
+                # During the first round, customers are served
+                # in timestamp order.
+                active_customers = [
+                    request for request in group
+                    if request[1] > 0
+                ]
+
+                receiver_count = min(
+                    totalInventory,
+                    len(active_customers)
+                )
+
+                for k in range(receiver_count):
+                    received.add(active_customers[k][0])
+
+                # No inventory remains for lower-bid groups.
+                totalInventory = 0
+                break
+
+            i = j
+
+        return sorted(
+            customer_id
+            for customer_id, _, _, _ in requests
+            if customer_id not in received
+        )
